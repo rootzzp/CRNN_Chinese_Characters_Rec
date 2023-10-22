@@ -156,5 +156,9 @@ def main():
     writer_dict['writer'].close()
 
 if __name__ == '__main__':
-
+    import sys
+    sys.argv = [
+        "train.py", 
+        "--cfg", "lib/config/360CC_config.yaml"
+    ]
     main()

@@ -89,6 +89,9 @@ or [run] python train.py --cfg lib/config/OWN_config.yaml
 - https://github.com/meijieru/crnn.pytorch
 - https://github.com/HRNet
 
+# 第一点改进：
+- 添加SE模块，利用通道注意力机制，提高模型学习能力，从而提高精度
+
 
 
 

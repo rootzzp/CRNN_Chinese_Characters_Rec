@@ -1,6 +1,23 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+class SE_Block(nn.Module):
+    def __init__(self, ch_in, reduction=16):
+        super(SE_Block, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(ch_in, ch_in // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(ch_in // reduction, ch_in, bias=False),
+            nn.Sigmoid()
+        )
+ 
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c) 
+        y = self.fc(y).view(b, c, 1, 1) # FC获取通道注意力权重，是具有全局信息的
+        return x * y.expand_as(x) 
+
 class BidirectionalLSTM(nn.Module):
     # Inputs hidden units Out
     def __init__(self, nIn, nHidden, nOut):
@@ -62,17 +79,19 @@ class CRNN(nn.Module):
         self.rnn = nn.Sequential(
             BidirectionalLSTM(512, nh, nh),
             BidirectionalLSTM(nh, nh, nclass))
+        
+        self.se = SE_Block(nm[-1])
 
     def forward(self, input):
 
         # conv features
-        conv = self.cnn(input)
-        b, c, h, w = conv.size()
-        print(conv.size())
+        conv = self.cnn(input) # conv [b(32),c(512),1,w(41)] input [32,1,32,160]
+        enhance_out = self.se(conv)
+        b, c, h, w = enhance_out.size()
         assert h == 1, "the height of conv must be 1"
-        conv = conv.squeeze(2) # b *512 * width
-        conv = conv.permute(2, 0, 1)  # [w, b, c]
-        output = F.log_softmax(self.rnn(conv), dim=2)
+        enhance_out = enhance_out.squeeze(2) # b *512 * width
+        enhance_out = enhance_out.permute(2, 0, 1)  # [w, b, c]
+        output = F.log_softmax(self.rnn(enhance_out), dim=2)
 
         return output
 
