@@ -46,8 +46,14 @@ class _360CC(data.Dataset):
 
         img_h, img_w = img.shape
 
-        img = cv2.resize(img, (0,0), fx=self.inp_w / img_w, fy=self.inp_h / img_h, interpolation=cv2.INTER_CUBIC)
-        img = np.reshape(img, (self.inp_h, self.inp_w, 1))
+        r = min(self.inp_w / img_w,self.inp_h / img_h)
+        new_h,new_w = int(r*img_h),int(r*img_w)
+        img = cv2.resize(img, (0,0), fx=r, fy=r, interpolation=cv2.INTER_CUBIC)
+        bottom = self.inp_h - new_h
+        right = self.inp_w - new_w
+        dst_img = cv2.copyMakeBorder(img,0,bottom,0,right,cv2.BORDER_CONSTANT,255)
+
+        img = np.reshape(dst_img, (self.inp_h, self.inp_w, 1))
 
         img = img.astype(np.float32)
         img = (img/255. - self.mean) / self.std
